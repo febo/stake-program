@@ -47,6 +47,15 @@ kinobi.update(
   ])
 );
 
+// Update accounts.
+kinobi.update(
+  k.updateAccountsVisitor({
+    config: {
+      size: 136,
+    },
+  })
+);
+
 // Add missing types from the IDL.
 kinobi.update(
   k.bottomUpTransformerVisitor([
