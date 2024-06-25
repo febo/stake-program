@@ -28,6 +28,10 @@ pub enum StakeError {
     /// 4 - Invalid mint
     #[error("Invalid mint")]
     InvalidMint,
+
+    /// 5 - Invalid authority
+    #[error("Invalid authority")]
+    InvalidAuthority,
 }
 
 impl PrintProgramError for StakeError {

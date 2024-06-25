@@ -1,8 +1,15 @@
-use solana_program::{entrypoint::ProgramResult, pubkey::Pubkey};
+use solana_program::{
+    clock::UnixTimestamp, entrypoint::ProgramResult, program_error::ProgramError, pubkey::Pubkey,
+};
 
-use crate::instruction::{
-    accounts::{Context, UpdateConfigAccounts},
-    ConfigField,
+use crate::{
+    error::StakeError,
+    instruction::{
+        accounts::{Context, UpdateConfigAccounts},
+        ConfigField,
+    },
+    require,
+    state::Config,
 };
 
 /// Updates configuration parameters.
@@ -12,9 +19,70 @@ use crate::instruction::{
 ///   0. `[w]` config
 ///   1. `[s]` config_authority
 pub fn process_update_config(
-    _program_id: &Pubkey,
-    _ctx: Context<UpdateConfigAccounts>,
-    _field: ConfigField,
+    program_id: &Pubkey,
+    ctx: Context<UpdateConfigAccounts>,
+    field: ConfigField,
 ) -> ProgramResult {
+    // Accounts validation.
+
+    // 1. config
+    // - owner must the stake program
+    // - must be initialized
+    require!(
+        ctx.accounts.config.owner == program_id,
+        ProgramError::InvalidAccountOwner,
+        "config"
+    );
+
+    let data = &mut ctx.accounts.config.try_borrow_mut_data()?;
+
+    require!(
+        data.len() == Config::LEN,
+        StakeError::InvalidAccountDataLength,
+        "config"
+    );
+
+    let config = bytemuck::from_bytes_mut::<Config>(data);
+
+    require!(
+        config.is_initialized(),
+        ProgramError::UninitializedAccount,
+        "config"
+    );
+
+    let authority: Option<Pubkey> = config.authority.into();
+
+    if let Some(authority) = authority {
+        // 2. config_authority
+        // - authority must match the config_authority
+        // - must be a signer
+
+        require!(
+            &authority == ctx.accounts.config_authority.key,
+            StakeError::InvalidAuthority,
+            "config_authority"
+        );
+
+        require!(
+            ctx.accounts.config_authority.is_signer,
+            ProgramError::MissingRequiredSignature,
+            "config_authority"
+        );
+
+        // Updates the config account.
+
+        match field {
+            ConfigField::CooldownTimeSeconds(seconds) => {
+                config.cooldown_time_seconds = seconds as UnixTimestamp;
+            }
+            ConfigField::MaxDeactivationBasisPoints(points) => {
+                config.max_deactivation_basis_points = points;
+            }
+        }
+    } else {
+        // TODO: do we need to log a message to say that the config authority is not set
+        // and the update did not happen?
+    }
+
     Ok(())
 }
