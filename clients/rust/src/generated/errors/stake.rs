@@ -25,6 +25,9 @@ pub enum StakeError {
     /// 4 - Invalid mint
     #[error("Invalid mint")]
     InvalidMint = 0x4,
+    /// 5 - Invalid authority
+    #[error("Invalid authority")]
+    InvalidAuthority = 0x5,
 }
 
 impl solana_program::program_error::PrintProgramError for StakeError {
