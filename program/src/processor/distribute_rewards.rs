@@ -32,9 +32,9 @@ pub fn process_distribute_rewards(
         "config"
     );
 
-    let data = &mut ctx.accounts.config.try_borrow_mut_data()?;
+    let mut data = ctx.accounts.config.try_borrow_mut_data()?;
 
-    let config = bytemuck::try_from_bytes_mut::<Config>(data)
+    let config = bytemuck::try_from_bytes_mut::<Config>(&mut data)
         .map_err(|_error| ProgramError::InvalidAccountData)?;
 
     require!(
@@ -46,6 +46,7 @@ pub fn process_distribute_rewards(
     // updates the stake rewards total on the config
 
     config.total_stake_rewards = config.total_stake_rewards.saturating_add(amount);
+    drop(data);
 
     // transfer the rewards to the config
 
